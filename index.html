@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EcoShakti — Sustainable Eating, Healthy Living</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --forest: #1a3a2a; --moss: #2d5a3d; --sage: #7daa82; --leaf: #a8c5a0;
+    --cream: #f5f0e8; --earth: #c4a882; --gold: #d4a843;
+    --text-dark: #1a1a1a; --text-mid: #4a4a4a;
+    --alert-green: #22c55e; --alert-bg: #052e16;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { background:var(--cream); color:var(--text-dark); font-family:'DM Sans',sans-serif; overflow-x:hidden; }
+
+  /* NOTIFICATION BAR */
+  #notif-bar {
+    position:fixed; top:0; left:0; right:0; z-index:9999;
+    background:var(--alert-bg); border-bottom:2px solid var(--alert-green);
+    padding:0 24px; display:flex; align-items:center; justify-content:space-between; gap:12px;
+    height:0; overflow:hidden; transition:height 0.4s cubic-bezier(0.4,0,0.2,1);
+  }
+  #notif-bar.visible { height:52px; }
+  .notif-inner { display:flex; align-items:center; gap:14px; flex:1; min-width:0; }
+  .notif-pulse {
+    width:10px; height:10px; border-radius:50%; background:var(--alert-green); flex-shrink:0;
+    animation:pulse-ring 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse-ring {
+    0%{box-shadow:0 0 0 0 rgba(34,197,94,0.6);}
+    70%{box-shadow:0 0 0 8px rgba(34,197,94,0);}
+    100%{box-shadow:0 0 0 0 rgba(34,197,94,0);}
+  }
+  .notif-text { font-family:'Space Mono',monospace; font-size:0.72rem; color:var(--alert-green); letter-spacing:0.04em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .notif-text strong { color:#86efac; }
+  .notif-actions { display:flex; gap:8px; align-items:center; flex-shrink:0; }
+  .notif-btn { font-family:'Space Mono',monospace; font-size:0.62rem; letter-spacing:0.1em; text-transform:uppercase; padding:6px 12px; border-radius:2px; cursor:pointer; border:none; transition:all 0.2s; }
+  .notif-btn.primary { background:var(--alert-green); color:#052e16; font-weight:700; }
+  .notif-btn.primary:hover { background:#86efac; }
+  .notif-btn.secondary { background:transparent; color:rgba(134,239,172,0.6); border:1px solid rgba(34,197,94,0.3); }
+  .notif-btn.secondary:hover { border-color:var(--alert-green); color:var(--alert-green); }
+  .notif-close { background:none; border:none; color:rgba(134,239,172,0.4); font-size:1.1rem; cursor:pointer; padding:4px 8px; transition:color 0.2s; }
+  .notif-close:hover { color:var(--alert-green); }
+
+  /* TOAST STACK */
+  #toast-stack { position:fixed; bottom:96px; right:24px; z-index:8888; display:flex; flex-direction:column-reverse; gap:10px; max-width:320px; pointer-events:none; }
+  .toast {
+    background:var(--forest); border:1px solid rgba(125,170,130,0.3); border-left:4px solid var(--alert-green);
+    border-radius:4px; padding:13px 15px; display:flex; align-items:flex-start; gap:10px;
+    animation:slideIn 0.35s ease; box-shadow:0 8px 32px rgba(0,0,0,0.3);
+  }
+  .toast.removing { animation:slideOut 0.35s ease forwards; }
+  @keyframes slideIn{from{opacity:0;transform:translateX(60px);}to{opacity:1;transform:translateX(0);}}
+  @keyframes slideOut{from{opacity:1;transform:translateX(0);}to{opacity:0;transform:translateX(60px);}}
+  .toast-icon { font-size:1.1rem; flex-shrink:0; }
+  .toast-body { flex:1; }
+  .toast-title { font-family:'Space Mono',monospace; font-size:0.65rem; color:var(--alert-green); letter-spacing:0.08em; margin-bottom:3px; }
+  .toast-msg { font-size:0.82rem; color:var(--leaf); line-height:1.4; }
+
+  /* NAV */
+  nav { position:fixed; top:0; left:0; right:0; z-index:100; padding:20px 40px; display:flex; align-items:center; justify-content:space-between; transition:background 0.3s,padding 0.3s,top 0.4s; }
+  nav.notif-open { top:52px; }
+  nav.scrolled { background:rgba(15,34,25,0.95); backdrop-filter:blur(12px); padding:14px 40px; box-shadow:0 2px 20px rgba(0,0,0,0.3); }
+  .nav-logo { font-family:'Playfair Display',serif; font-size:1.2rem; color:var(--cream); font-weight:700; }
+  .nav-logo span { color:var(--sage); }
+  .nav-links { display:flex; gap:24px; list-style:none; align-items:center; }
+  .nav-links a { color:rgba(245,240,232,0.7); text-decoration:none; font-family:'Space Mono',monospace; font-size:0.67rem; letter-spacing:0.12em; text-transform:uppercase; transition:color 0.2s; }
+  .nav-links a:hover { color:var(--sage); }
+  .nav-demo-btn { font-family:'Space Mono',monospace; font-size:0.63rem; letter-spacing:0.1em; text-transform:uppercase; padding:8px 14px; background:var(--sage); color:var(--forest); border:none; border-radius:2px; cursor:pointer; font-weight:700; transition:background 0.2s; }
+  .nav-demo-btn:hover { background:var(--leaf); }
+  @media(max-width:700px){.nav-links{display:none;}nav{padding:16px 24px;}}
+
+  /* HERO */
+  .hero { min-height:100vh; background:var(--forest); position:relative; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:80px 24px 60px; overflow:hidden; }
+  .hero-bg-circle { position:absolute; border-radius:50%; opacity:0.07; }
+  .hero-bg-circle.c1 { width:700px; height:700px; background:var(--sage); top:-200px; left:-200px; }
+  .hero-bg-circle.c2 { width:500px; height:500px; background:var(--gold); bottom:-150px; right:-100px; }
+  .leaf-scatter { position:absolute; font-size:2rem; opacity:0.15; animation:floatLeaf 8s ease-in-out infinite; }
+  .leaf-scatter:nth-child(1){top:10%;left:8%;animation-delay:0s;}
+  .leaf-scatter:nth-child(2){top:20%;right:12%;animation-delay:2s;}
+  .leaf-scatter:nth-child(3){bottom:25%;left:15%;animation-delay:4s;}
+  .leaf-scatter:nth-child(4){bottom:15%;right:10%;animation-delay:1s;}
+  .leaf-scatter:nth-child(5){top:50%;left:5%;animation-delay:3s;}
+  @keyframes floatLeaf{0%,100%{transform:translateY(0) rotate(0deg);}50%{transform:translateY(-20px) rotate(10deg);}}
+  .team-badge { display:inline-block; background:rgba(125,170,130,0.2); border:1px solid rgba(125,170,130,0.4); color:var(--leaf); font-family:'Space Mono',monospace; font-size:0.7rem; letter-spacing:0.2em; text-transform:uppercase; padding:8px 20px; border-radius:100px; margin-bottom:32px; animation:fadeSlideDown 0.8s ease both; }
+  .hero h1 { font-family:'Playfair Display',serif; font-size:clamp(3.5rem,10vw,8rem); font-weight:900; color:var(--cream); line-height:0.95; letter-spacing:-0.02em; animation:fadeSlideDown 0.9s ease both; animation-delay:0.1s; }
+  .hero h1 em { font-style:italic; color:var(--sage); }
+  .hero-subtitle { margin-top:28px; font-size:clamp(1rem,2.5vw,1.3rem); color:var(--leaf); font-weight:300; letter-spacing:0.05em; animation:fadeSlideDown 1s ease both; animation-delay:0.2s; }
+  .hero-divider { width:60px; height:2px; background:var(--gold); margin:32px auto; animation:fadeSlideDown 1s ease both; animation-delay:0.3s; }
+  .hero-names { font-family:'Space Mono',monospace; font-size:0.85rem; color:rgba(245,240,232,0.6); letter-spacing:0.1em; animation:fadeSlideDown 1s ease both; animation-delay:0.4s; }
+  .scroll-hint { position:absolute; bottom:40px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:8px; color:rgba(245,240,232,0.3); font-family:'Space Mono',monospace; font-size:0.65rem; letter-spacing:0.15em; animation:fadeSlideDown 1s ease both,bounce 2s ease-in-out 1.5s infinite; }
+  .scroll-hint span { display:block; font-size:1.2rem; }
+  @keyframes bounce{0%,100%{transform:translateX(-50%) translateY(0);}50%{transform:translateX(-50%) translateY(8px);}}
+  @keyframes fadeSlideDown{from{opacity:0;transform:translateY(-24px);}to{opacity:1;transform:translateY(0);}}
+
+  /* SECTIONS */
+  section { position:relative; z-index:1; }
+  .section-inner { max-width:1100px; margin:0 auto; padding:100px 32px; }
+  .section-label { font-family:'Space Mono',monospace; font-size:0.7rem; letter-spacing:0.25em; text-transform:uppercase; color:var(--sage); margin-bottom:16px; }
+  .section-title { font-family:'Playfair Display',serif; font-size:clamp(2rem,5vw,3.5rem); font-weight:700; line-height:1.1; color:var(--forest); margin-bottom:32px; }
+  .section-title em { font-style:italic; color:var(--moss); }
+  .body-text { font-size:1.05rem; line-height:1.8; color:var(--text-mid); max-width:680px; }
+
+  /* STATS */
+  .stat-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:24px; margin-top:56px; }
+  .stat-card { background:var(--forest); color:var(--cream); padding:36px 28px; border-radius:4px; position:relative; overflow:hidden; transition:transform 0.3s; }
+  .stat-card:hover { transform:translateY(-6px); }
+  .stat-card::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; background:var(--gold); }
+  .stat-num { font-family:'Playfair Display',serif; font-size:3rem; font-weight:900; color:var(--sage); line-height:1; margin-bottom:12px; }
+  .stat-desc { font-size:0.9rem; line-height:1.5; color:var(--leaf); }
+
+  /* SDG */
+  .sdg-section { background:var(--forest); }
+  .sdg-section .section-title { color:var(--cream); }
+  .sdg-section .body-text { color:var(--leaf); }
+  .sdg-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:32px; margin-top:56px; }
+  .sdg-card { border:1px solid rgba(125,170,130,0.25); border-radius:4px; padding:40px 36px; position:relative; overflow:hidden; transition:border-color 0.3s; }
+  .sdg-card:hover { border-color:var(--sage); }
+  .sdg-num { font-family:'Playfair Display',serif; font-size:4.5rem; font-weight:900; line-height:1; color:rgba(125,170,130,0.2); position:absolute; top:20px; right:24px; }
+  .sdg-tag { font-family:'Space Mono',monospace; font-size:0.65rem; letter-spacing:0.2em; color:var(--gold); text-transform:uppercase; margin-bottom:12px; }
+  .sdg-card h3 { font-family:'Playfair Display',serif; font-size:1.4rem; color:var(--cream); margin-bottom:16px; line-height:1.2; }
+  .sdg-card p { font-size:0.95rem; line-height:1.7; color:var(--leaf); }
+
+  /* FLOW */
+  .flow-section { background:#f0ebe0; }
+  .flow-diagram { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:0; margin-top:56px; }
+  .flow-step { display:flex; flex-direction:column; align-items:center; text-align:center; padding:28px 20px; background:white; border-radius:4px; width:150px; box-shadow:0 2px 16px rgba(26,58,42,0.07); transition:transform 0.25s; }
+  .flow-step:hover { transform:scale(1.05); }
+  .flow-icon { font-size:2.2rem; margin-bottom:12px; }
+  .flow-step h4 { font-family:'Playfair Display',serif; font-size:0.9rem; color:var(--forest); line-height:1.3; }
+  .flow-step p { font-size:0.72rem; color:var(--text-mid); margin-top:6px; line-height:1.4; }
+  .flow-arrow { font-size:1.5rem; color:var(--sage); padding:0 4px; flex-shrink:0; }
+  @media(max-width:700px){.flow-diagram{flex-direction:column;}.flow-arrow{transform:rotate(90deg);}.flow-step{width:200px;}}
+
+  /* SYSTEM */
+  .system-section { background:var(--cream); }
+  .system-grid { display:grid; grid-template-columns:1fr 1fr; gap:48px; margin-top:64px; }
+  @media(max-width:768px){.system-grid{grid-template-columns:1fr;}}
+  .system-card { background:white; border-radius:4px; overflow:hidden; box-shadow:0 4px 32px rgba(26,58,42,0.08); transition:transform 0.3s,box-shadow 0.3s; }
+  .system-card:hover { transform:translateY(-8px); box-shadow:0 12px 48px rgba(26,58,42,0.15); }
+  .system-card-img { height:180px; display:flex; align-items:center; justify-content:center; font-size:5rem; }
+  .cam-bg { background:linear-gradient(135deg,var(--forest),var(--moss)); }
+  .seg-bg { background:linear-gradient(135deg,#3d2a1a,#6b4c2a); }
+  .system-card-body { padding:36px 32px; }
+  .system-card-body h3 { font-family:'Playfair Display',serif; font-size:1.6rem; color:var(--forest); margin-bottom:16px; }
+  .system-card-body p { font-size:0.95rem; line-height:1.7; color:var(--text-mid); margin-bottom:24px; }
+  .feature-list { list-style:none; display:flex; flex-direction:column; gap:10px; }
+  .feature-list li { display:flex; align-items:flex-start; gap:12px; font-size:0.9rem; color:var(--text-mid); }
+  .feature-list li::before { content:'→'; color:var(--sage); font-weight:700; flex-shrink:0; margin-top:1px; }
+
+  /* SHELTERS */
+  .shelters-section { background:var(--forest); }
+  .shelters-section .section-title { color:var(--cream); }
+  .shelters-section .body-text { color:var(--leaf); }
+  .shelter-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:20px; margin-top:48px; }
+  .shelter-card { background:rgba(255,255,255,0.05); border:1px solid rgba(125,170,130,0.2); border-radius:4px; padding:26px 24px 22px; transition:border-color 0.3s,background 0.3s; }
+  .shelter-card:hover { border-color:var(--sage); background:rgba(255,255,255,0.08); }
+  .shelter-card-header { display:flex; align-items:center; gap:13px; margin-bottom:14px; }
+  .shelter-icon { width:42px; height:42px; background:rgba(125,170,130,0.15); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0; }
+  .shelter-name { font-family:'Playfair Display',serif; font-size:1rem; color:var(--cream); line-height:1.2; }
+  .shelter-type { font-family:'Space Mono',monospace; font-size:0.6rem; color:var(--sage); letter-spacing:0.1em; margin-top:2px; }
+  .shelter-contacts { display:flex; flex-direction:column; gap:7px; margin-bottom:18px; }
+  .shelter-contact { display:flex; align-items:center; gap:9px; text-decoration:none; font-size:0.82rem; color:rgba(245,240,232,0.6); transition:color 0.2s; }
+  .shelter-contact:hover { color:var(--leaf); }
+  .notify-shelter-btn { width:100%; font-family:'Space Mono',monospace; font-size:0.63rem; letter-spacing:0.1em; text-transform:uppercase; padding:10px; background:transparent; border:1px solid rgba(125,170,130,0.35); color:var(--sage); border-radius:2px; cursor:pointer; transition:all 0.2s; }
+  .notify-shelter-btn:hover { background:var(--sage); color:var(--forest); }
+  .notify-shelter-btn.notified { background:var(--alert-green); border-color:var(--alert-green); color:#052e16; }
+
+  /* QUOTE */
+  .quote-section { background:var(--moss); padding:80px 32px; text-align:center; position:relative; overflow:hidden; }
+  .quote-section::before { content:'"'; font-family:'Playfair Display',serif; font-size:20rem; color:rgba(255,255,255,0.04); position:absolute; top:-60px; left:20px; line-height:1; }
+  .quote-text { font-family:'Playfair Display',serif; font-size:clamp(1.4rem,3.5vw,2.2rem); font-style:italic; color:var(--cream); max-width:700px; margin:0 auto; line-height:1.5; position:relative; z-index:1; }
+  .quote-author { font-family:'Space Mono',monospace; font-size:0.75rem; color:var(--leaf); letter-spacing:0.15em; margin-top:24px; position:relative; z-index:1; }
+
+  /* TEAM */
+  .team-section { background:var(--forest); text-align:center; }
+  .team-section .section-title { color:var(--cream); }
+  .team-cards { display:flex; justify-content:center; gap:40px; margin-top:56px; flex-wrap:wrap; }
+  .team-card { width:220px; }
+  .team-avatar { width:100px; height:100px; border-radius:50%; background:var(--moss); border:3px solid var(--sage); display:flex; align-items:center; justify-content:center; font-size:2.5rem; margin:0 auto 20px; transition:transform 0.3s; }
+  .team-card:hover .team-avatar { transform:scale(1.08) rotate(3deg); }
+  .team-card h3 { font-family:'Playfair Display',serif; font-size:1.2rem; color:var(--cream); margin-bottom:6px; }
+  .team-card p { font-size:0.8rem; color:var(--sage); font-family:'Space Mono',monospace; letter-spacing:0.05em; }
+
+  /* FOOTER */
+  .footer { background:#0f2219; padding:48px 32px; text-align:center; }
+  .footer p { font-family:'Space Mono',monospace; font-size:0.75rem; color:rgba(245,240,232,0.3); letter-spacing:0.1em; line-height:1.8; }
+  .footer .tagline { font-family:'Playfair Display',serif; font-size:1.6rem; font-style:italic; color:var(--sage); margin-bottom:20px; }
+
+  /* CHAT FAB */
+  #chat-fab { position:fixed; bottom:24px; right:24px; z-index:7777; width:58px; height:58px; border-radius:50%; background:var(--sage); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:1.5rem; box-shadow:0 4px 24px rgba(0,0,0,0.3); transition:transform 0.25s,background 0.25s; }
+  #chat-fab:hover { transform:scale(1.1); background:var(--leaf); }
+  .fab-badge { position:absolute; top:-3px; right:-3px; width:17px; height:17px; border-radius:50%; background:var(--alert-green); font-family:'Space Mono',monospace; font-size:0.55rem; color:#052e16; font-weight:700; display:flex; align-items:center; justify-content:center; animation:pulse-ring 1.5s ease-in-out infinite; }
+
+  /* CHAT WINDOW */
+  #chat-window { position:fixed; bottom:94px; right:24px; z-index:7777; width:355px; max-height:510px; background:var(--forest); border:1px solid rgba(125,170,130,0.3); border-radius:8px; box-shadow:0 16px 56px rgba(0,0,0,0.4); display:flex; flex-direction:column; transform:scale(0.85) translateY(24px); opacity:0; pointer-events:none; transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1),opacity 0.25s; transform-origin:bottom right; }
+  #chat-window.open { transform:scale(1) translateY(0); opacity:1; pointer-events:all; }
+  .chat-header { background:var(--moss); padding:15px 18px; border-radius:8px 8px 0 0; display:flex; align-items:center; gap:11px; border-bottom:1px solid rgba(125,170,130,0.2); }
+  .chat-avatar { width:34px; height:34px; background:var(--sage); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; }
+  .chat-header-info { flex:1; }
+  .chat-header-name { font-family:'Playfair Display',serif; font-size:0.92rem; color:var(--cream); }
+  .chat-header-status { font-family:'Space Mono',monospace; font-size:0.58rem; color:var(--alert-green); letter-spacing:0.08em; }
+  .chat-header-status::before { content:'● '; animation:blink 1.5s infinite; }
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
+  .chat-close { background:none; border:none; color:rgba(245,240,232,0.4); font-size:1.1rem; cursor:pointer; padding:4px; transition:color 0.2s; }
+  .chat-close:hover { color:var(--cream); }
+  #chat-messages { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:11px; scroll-behavior:smooth; }
+  #chat-messages::-webkit-scrollbar { width:3px; }
+  #chat-messages::-webkit-scrollbar-thumb { background:rgba(125,170,130,0.3); border-radius:2px; }
+  .msg { max-width:84%; display:flex; flex-direction:column; gap:3px; }
+  .msg.bot { align-self:flex-start; }
+  .msg.user { align-self:flex-end; }
+  .msg-bubble { padding:9px 13px; border-radius:12px; font-size:0.865rem; line-height:1.5; }
+  .msg.bot .msg-bubble { background:rgba(255,255,255,0.08); color:var(--leaf); border-radius:4px 12px 12px 12px; }
+  .msg.user .msg-bubble { background:var(--sage); color:var(--forest); font-weight:500; border-radius:12px 4px 12px 12px; }
+  .msg-time { font-family:'Space Mono',monospace; font-size:0.56rem; color:rgba(255,255,255,0.22); padding:0 3px; }
+  .msg.user .msg-time { text-align:right; }
+  .typing-indicator { display:flex; gap:5px; align-items:center; padding:10px 14px; background:rgba(255,255,255,0.08); border-radius:4px 12px 12px 12px; width:fit-content; }
+  .typing-dot { width:7px; height:7px; border-radius:50%; background:var(--sage); animation:typingBounce 1.2s ease-in-out infinite; }
+  .typing-dot:nth-child(2){animation-delay:0.2s;}
+  .typing-dot:nth-child(3){animation-delay:0.4s;}
+  @keyframes typingBounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+  .chat-quick-btns { padding:0 11px 8px; display:flex; flex-wrap:wrap; gap:6px; }
+  .quick-btn { font-family:'Space Mono',monospace; font-size:0.6rem; padding:5px 10px; background:transparent; border:1px solid rgba(125,170,130,0.3); color:var(--sage); border-radius:100px; cursor:pointer; transition:all 0.2s; letter-spacing:0.04em; }
+  .quick-btn:hover { background:var(--sage); color:var(--forest); }
+  .chat-input-row { padding:11px 14px; border-top:1px solid rgba(125,170,130,0.15); display:flex; gap:8px; }
+  #chat-input { flex:1; background:rgba(255,255,255,0.07); border:1px solid rgba(125,170,130,0.2); border-radius:4px; padding:9px 13px; color:var(--cream); font-family:'DM Sans',sans-serif; font-size:0.875rem; outline:none; transition:border-color 0.2s; }
+  #chat-input:focus { border-color:var(--sage); }
+  #chat-input::placeholder { color:rgba(245,240,232,0.3); }
+  #chat-send { background:var(--sage); border:none; border-radius:4px; width:36px; height:36px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:0.95rem; transition:background 0.2s; flex-shrink:0; }
+  #chat-send:hover { background:var(--leaf); }
+
+  /* REVEAL */
+  .reveal { opacity:0; transform:translateY(32px); transition:opacity 0.7s ease,transform 0.7s ease; }
+  .reveal.visible { opacity:1; transform:translateY(0); }
+
+  @media(max-width:420px){
+    #chat-window { width:calc(100vw - 32px); right:16px; }
+    #toast-stack { right:12px; max-width:calc(100vw - 24px); }
+  }
+</style>
+</head>
+<body>
+
+<!-- NOTIFICATION BAR -->
+<div id="notif-bar">
+  <div class="notif-inner">
+    <div class="notif-pulse"></div>
+    <div class="notif-text" id="notif-text">
+      <strong>🍱 Donation Food Detected!</strong> &nbsp;AI camera identified <strong>3 reusable meals</strong> at School Cafeteria — shelters are being notified now.
+    </div>
+  </div>
+  <div class="notif-actions">
+    <button class="notif-btn primary" onclick="scrollToShelters()">View Shelters</button>
+    <button class="notif-btn secondary" onclick="notifyAllShelters()">Notify All</button>
+    <button class="notif-close" onclick="closeNotifBar()">✕</button>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav id="navbar">
+  <div class="nav-logo">Eco<span>Shakti</span></div>
+  <ul class="nav-links">
+    <li><a href="#problem">Problem</a></li>
+    <li><a href="#sdg">SDGs</a></li>
+    <li><a href="#system">System</a></li>
+    <li><a href="#shelters">Shelters</a></li>
+    <li><a href="#team">Team</a></li>
+    <li><button class="nav-demo-btn" onclick="simulateDonation()">▶ Demo Alert</button></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg-circle c1"></div>
+  <div class="hero-bg-circle c2"></div>
+  <span class="leaf-scatter">🍃</span>
+  <span class="leaf-scatter">🌿</span>
+  <span class="leaf-scatter">🍀</span>
+  <span class="leaf-scatter">🌱</span>
+  <span class="leaf-scatter">🍃</span>
+  <div class="team-badge">Team EcoShakti — 2025</div>
+  <h1>Sustainable<br><em>Eating,</em><br>Healthy Living</h1>
+  <div class="hero-divider"></div>
+  <p class="hero-subtitle">AI-Powered Food Waste Reduction for a Better Planet</p>
+  <p class="hero-names">Raizel Bartaula &nbsp;·&nbsp; Isha Dhungel</p>
+  <div class="scroll-hint"><span>↓</span>SCROLL</div>
+</section>
+
+<!-- PROBLEM -->
+<section id="problem">
+  <div class="section-inner">
+    <div class="reveal">
+      <p class="section-label">The Problem</p>
+      <h2 class="section-title">Food is wasted<br>while people <em>go hungry.</em></h2>
+      <p class="body-text">Every day in school cafeterias around the world, enormous amounts of food are discarded without thought. The issue isn't just availability — it's about awareness and habits.</p>
+    </div>
+    <div class="stat-row reveal">
+      <div class="stat-card"><div class="stat-num">⅓</div><div class="stat-desc">of all food produced globally is lost or wasted every year</div></div>
+      <div class="stat-card"><div class="stat-num">828M</div><div class="stat-desc">people go to bed hungry each night around the world</div></div>
+      <div class="stat-card"><div class="stat-num">8–10%</div><div class="stat-desc">of global greenhouse gas emissions come from food waste</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- QUOTE -->
+<div class="quote-section">
+  <p class="quote-text">"Save every bite that counts."</p>
+  <p class="quote-author">— Team EcoShakti</p>
+</div>
+
+<!-- SDG -->
+<section class="sdg-section" id="sdg">
+  <div class="section-inner">
+    <div class="reveal">
+      <p class="section-label" style="color:var(--gold)">Global Alignment</p>
+      <h2 class="section-title">United Nations<br><em>Sustainable Development Goals</em></h2>
+      <p class="body-text">Our project directly supports two key UN SDGs, connecting local action to a global movement.</p>
+    </div>
+    <div class="sdg-cards">
+      <div class="sdg-card reveal">
+        <div class="sdg-num">3</div>
+        <p class="sdg-tag">SDG 3</p>
+        <h3>Good Health &amp; Well-being</h3>
+        <p>Highlights the importance of proper nutrition and healthy lifestyles. By redirecting reusable food to those in need, we support better health outcomes for communities.</p>
+      </div>
+      <div class="sdg-card reveal">
+        <div class="sdg-num">12</div>
+        <p class="sdg-tag">SDG 12</p>
+        <h3>Responsible Consumption &amp; Production</h3>
+        <p>Encourages mindful use of resources — especially food. Our system promotes a circular approach: detect, segregate, and redirect instead of discard.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FLOW -->
+<section class="flow-section" id="how-it-works">
+  <div class="section-inner">
+    <div class="reveal">
+      <p class="section-label">How It Works</p>
+      <h2 class="section-title" style="color:var(--forest)">The EcoShakti <em>System Flow</em></h2>
+    </div>
+    <div class="flow-diagram reveal">
+      <div class="flow-step"><div class="flow-icon">🍽️</div><h4>Food Placed</h4><p>Plate placed under AI camera</p></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-icon">📷</div><h4>AI Detection</h4><p>Classifies: reusable or throwable</p></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-icon">🔔</div><h4>Shelters Notified</h4><p>Instant Gmail &amp; SMS to local shelters</p></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-icon">♻️</div><h4>Segregation</h4><p>Waste sorted: dry or wet</p></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-icon">🌍</div><h4>Impact</h4><p>Fed communities, less landfill</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- SYSTEM -->
+<section class="system-section" id="system">
+  <div class="section-inner">
+    <div class="reveal">
+      <p class="section-label">Our Innovation</p>
+      <h2 class="section-title">Two-part <em>smart system</em><br>for a smarter planet.</h2>
+    </div>
+    <div class="system-grid">
+      <div class="system-card reveal">
+        <div class="system-card-img cam-bg">📷</div>
+        <div class="system-card-body">
+          <h3>AI Camera Detector</h3>
+          <p>Trained AI classifies food as <strong>reusable</strong> or <strong>throwable</strong> in real time, then sends data and alerts to shelters instantly.</p>
+          <ul class="feature-list">
+            <li>Real-time food classification via computer vision</li>
+            <li>Triggers instant Gmail &amp; SMS shelter notifications</li>
+            <li>Tracks donation data on a live web dashboard</li>
+            <li>Supports local shelter and food bank network</li>
+          </ul>
+        </div>
+      </div>
+      <div class="system-card reveal">
+        <div class="system-card-img seg-bg">🗂️</div>
+        <div class="system-card-body">
+          <h3>Waste Segregator</h3>
+          <p>Automated sorting of throwable food into <strong>dry</strong> and <strong>wet</strong> compartments for responsible environmental management.</p>
+          <ul class="feature-list">
+            <li>Auto-separates dry and wet food waste</li>
+            <li>Integrated with AI camera output signals</li>
+            <li>Prevents harmful waste mixing &amp; pollution</li>
+            <li>Enables proper composting and recycling</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SHELTERS -->
+<section class="shelters-section" id="shelters">
+  <div class="section-inner">
+    <div class="reveal">
+      <p class="section-label" style="color:var(--gold)">Donation Network</p>
+      <h2 class="section-title">Local Shelters &amp;<br><em>Partner Contacts</em></h2>
+      <p class="body-text">When the AI camera detects reusable food, these partners are notified instantly via <strong style="color:var(--leaf)">Gmail</strong> and <strong style="color:var(--leaf)">phone/SMS</strong>. You can also manually send alerts or contact them directly.</p>
+    </div>
+    <div class="shelter-grid reveal">
+
+      <div class="shelter-card">
+        <div class="shelter-card-header">
+          <div class="shelter-icon">🏠</div>
+          <div><div class="shelter-name">Kathmandu Community Kitchen</div><div class="shelter-type">Food Shelter · Kathmandu</div></div>
+        </div>
+        <div class="shelter-contacts">
+          <a class="shelter-contact" href="mailto:kck.shelter@gmail.com">✉️ &nbsp;kck.shelter@gmail.com</a>
+          <a class="shelter-contact" href="tel:+97714567890">📞 &nbsp;+977-1-4567890</a>
+        </div>
+        <button class="notify-shelter-btn" onclick="notifyShelter(this,'Kathmandu Community Kitchen')">🔔 &nbsp;Send Donation Alert</button>
+      </div>
+
+      <div class="shelter-card">
+        <div class="shelter-card-header">
+          <div class="shelter-icon">🌿</div>
+          <div><div class="shelter-name">Green Hope Foundation</div><div class="shelter-type">NGO · Food Distribution</div></div>
+        </div>
+        <div class="shelter-contacts">
+          <a class="shelter-contact" href="mailto:info@greenhopenepal.org">✉️ &nbsp;info@greenhopenepal.org</a>
+          <a class="shelter-contact" href="tel:+9779801234567">📞 &nbsp;+977-980-123-4567</a>
+        </div>
+        <button class="notify-shelter-btn" onclick="notifyShelter(this,'Green Hope Foundation')">🔔 &nbsp;Send Donation Alert</button>
+      </div>
+
+      <div class="shelter-card">
+        <div class="shelter-card-header">
+          <div class="shelter-icon">❤️</div>
+          <div><div class="shelter-name">Aasha Bal Griha</div><div class="shelter-type">Children's Home · Lalitpur</div></div>
+        </div>
+        <div class="shelter-contacts">
+          <a class="shelter-contact" href="mailto:aasha.balgriha@gmail.com">✉️ &nbsp;aasha.balgriha@gmail.com</a>
+          <a class="shelter-contact" href="tel:+9779851234567">📞 &nbsp;+977-985-123-4567</a>
+        </div>
+        <button class="notify-shelter-btn" onclick="notifyShelter(this,'Aasha Bal Griha')">🔔 &nbsp;Send Donation Alert</button>
+      </div>
+
+      <div class="shelter-card">
+        <div class="shelter-card-header">
+          <div class="shelter-icon">🌾</div>
+          <div><div class="shelter-name">Bhaktapur Food Bank</div><div class="shelter-type">Community Food Bank</div></div>
+        </div>
+        <div class="shelter-contacts">
+          <a class="shelter-contact" href="mailto:bfoodbank@outlook.com">✉️ &nbsp;bfoodbank@outlook.com</a>
+          <a class="shelter-contact" href="tel:+9779761234567">📞 &nbsp;+977-976-123-4567</a>
+        </div>
+        <button class="notify-shelter-btn" onclick="notifyShelter(this,'Bhaktapur Food Bank')">🔔 &nbsp;Send Donation Alert</button>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- TEAM -->
+<section class="team-section" id="team">
+  <div class="section-inner">
+    <div class="reveal">
+      <p class="section-label" style="color:var(--gold)">Meet the Team</p>
+      <h2 class="section-title">The minds behind<br><em>EcoShakti.</em></h2>
+    </div>
+    <div class="team-cards">
+      <div class="team-card reveal"><div class="team-avatar">👩‍🔬</div><h3>Raizel Bartaula</h3><p>Co-Founder · Team EcoShakti</p></div>
+      <div class="team-card reveal"><div class="team-avatar">👩‍💻</div><h3>Isha Dhungel</h3><p>Co-Founder · Team EcoShakti</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <p class="tagline">Save every bite that counts.</p>
+  <p>TEAM ECOSHAKTI &nbsp;·&nbsp; SUSTAINABLE EATING, HEALTHY LIVING<br>SDG 3 &amp; SDG 12 &nbsp;·&nbsp; RAIZEL BARTAULA &amp; ISHA DHUNGEL</p>
+</footer>
+
+<!-- TOAST STACK -->
+<div id="toast-stack"></div>
+
+<!-- CHAT FAB -->
+<button id="chat-fab" onclick="toggleChat()">
+  🌿
+  <span class="fab-badge" id="fab-badge">1</span>
+</button>
+
+<!-- CHAT WINDOW -->
+<div id="chat-window">
+  <div class="chat-header">
+    <div class="chat-avatar">🌱</div>
+    <div class="chat-header-info">
+      <div class="chat-header-name">EcoShakti Assistant</div>
+      <div class="chat-header-status">Online — here to help</div>
+    </div>
+    <button class="chat-close" onclick="toggleChat()">✕</button>
+  </div>
+  <div id="chat-messages"></div>
+  <div class="chat-quick-btns" id="quick-btns">
+    <button class="quick-btn" onclick="sendQuick('How does the AI camera work?')">📷 AI Camera</button>
+    <button class="quick-btn" onclick="sendQuick('How are shelters notified?')">🔔 Notifications</button>
+    <button class="quick-btn" onclick="sendQuick('What SDGs do you support?')">🌍 SDG Goals</button>
+    <button class="quick-btn" onclick="sendQuick('How can I donate food?')">🍱 Donate</button>
+  </div>
+  <div class="chat-input-row">
+    <input id="chat-input" type="text" placeholder="Ask about EcoShakti..." onkeydown="if(event.key==='Enter')sendMessage()">
+    <button id="chat-send" onclick="sendMessage()">➤</button>
+  </div>
+</div>
+
+<script>
+// ── NOTIFICATION BAR ──
+function showNotifBar(msg) {
+  if (msg) document.getElementById('notif-text').innerHTML = msg;
+  const bar = document.getElementById('notif-bar');
+  const nav = document.getElementById('navbar');
+  bar.classList.add('visible');
+  nav.classList.add('notif-open');
+}
+function closeNotifBar() {
+  document.getElementById('notif-bar').classList.remove('visible');
+  document.getElementById('navbar').classList.remove('notif-open');
+}
+function scrollToShelters() {
+  closeNotifBar();
+  document.getElementById('shelters').scrollIntoView({ behavior: 'smooth' });
+}
+setTimeout(showNotifBar, 2500);
+
+// ── DEMO SIMULATION ──
+const donations = [
+  { food: '2 plates of rice and dal', qty: 2 },
+  { food: '5 sandwiches', qty: 5 },
+  { food: '3 portions of curry', qty: 3 },
+  { food: '4 servings of noodles', qty: 4 },
+];
+let demoIdx = 0;
+function simulateDonation() {
+  const item = donations[demoIdx++ % donations.length];
+  showNotifBar(`<strong>🍱 Donation Food Detected!</strong> &nbsp;AI camera identified <strong>${item.food}</strong> — notifying shelters now!`);
+  triggerToast(`AI detected: ${item.food} ready for donation.`, '📷');
+  setTimeout(() => triggerToast('Gmail & SMS alerts sent to all registered shelters.', '✅'), 1300);
+}
+
+// ── NOTIFY ALL ──
+function notifyAllShelters() {
+  triggerToast('Manual alert sent to all 4 registered shelters.', '📣');
+  closeNotifBar();
+}
+
+// ── SHELTER NOTIFY BUTTONS ──
+function notifyShelter(btn, name) {
+  btn.textContent = '✅  Notified!';
+  btn.classList.add('notified');
+  btn.disabled = true;
+  triggerToast(`Alert sent to ${name} via Gmail & SMS.`, '📨');
+  setTimeout(() => {
+    btn.textContent = '🔔  Send Donation Alert';
+    btn.classList.remove('notified');
+    btn.disabled = false;
+  }, 4000);
+}
+
+// ── TOASTS ──
+function triggerToast(msg, icon='🌿', duration=4200) {
+  const stack = document.getElementById('toast-stack');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  const now = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+  t.innerHTML = `<div class="toast-icon">${icon}</div><div class="toast-body"><div class="toast-title">ECOSHAKTI · ${now}</div><div class="toast-msg">${msg}</div></div>`;
+  stack.appendChild(t);
+  setTimeout(() => { t.classList.add('removing'); setTimeout(() => t.remove(), 350); }, duration);
+}
+
+// ── NAV SCROLL ──
+window.addEventListener('scroll', () => {
+  document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 60);
+});
+
+// ── REVEAL ON SCROLL ──
+const revEls = document.querySelectorAll('.reveal');
+new IntersectionObserver((entries) => {
+  entries.forEach((e, i) => {
+    if (e.isIntersecting) { setTimeout(() => e.target.classList.add('visible'), i * 80); }
+  });
+}, { threshold: 0.1 }).observe ? revEls.forEach(el => new IntersectionObserver((entries) => {
+  if (entries[0].isIntersecting) entries[0].target.classList.add('visible');
+}, { threshold: 0.1 }).observe(el)) : revEls.forEach(el => el.classList.add('visible'));
+
+// ── CHATBOT ──
+let chatOpen = false, chatInited = false;
+
+const replies = {
+  camera: "Our AI Camera is trained using computer vision to detect food placed under it and classify it as **reusable** (safe to donate) or **throwable** (waste). Once detected, the data is sent to our web dashboard and instantly triggers Gmail and SMS notifications to local shelters! 📷",
+  notif: "When reusable food is detected, the system immediately sends an alert via **Gmail (email)** and **SMS (phone call/text)** to all registered local shelters. You can also manually click 'Send Donation Alert' on any shelter card in the Shelters section below! 🔔",
+  sdg: "EcoShakti supports two UN Sustainable Development Goals:\n\n🌿 **SDG 3 — Good Health & Well-being**: Connecting surplus food to people in need promotes better nutrition and wellbeing.\n\n♻️ **SDG 12 — Responsible Consumption & Production**: Smart detection and segregation reduces food waste at its source.",
+  donate: "To donate food, bring surplus food to a cafeteria with an EcoShakti station. Place it under the AI camera — if it's classified as reusable, nearby shelters are notified automatically. They can arrange pickup, or you can drop it off. Every meal counts! 🍱",
+  segregator: "Our Waste Segregator sorts food into **dry waste** (e.g., bread, dry rice, crackers) and **wet waste** (e.g., curries, soups, sauces). This prevents harmful mixing, enables proper composting and recycling, and keeps our environment clean. ♻️",
+  team: "EcoShakti was built by **Raizel Bartaula** and **Isha Dhungel**, two students who saw food being wasted in their school cafeteria and decided to take action. Their theme — Sustainable Eating, Healthy Living — connects everyday habits to global impact. 💚",
+  contact: "Each shelter in the Shelters section has a direct **Gmail** and **phone number** listed. You can click to email or call them. The 'Send Donation Alert' button simulates the automated notification the AI camera triggers! Want me to scroll you there?",
+  default: "I'm here to help with anything about EcoShakti! 🌱 You can ask me about our **AI camera**, **shelter notifications**, **waste segregation**, **SDG goals**, how to **donate food**, or meet the **team**. What would you like to know?"
+};
+
+function getBotReply(input) {
+  const t = input.toLowerCase();
+  if (t.match(/camera|ai|detect|vision/)) return replies.camera;
+  if (t.match(/notif|alert|shelter|sms|gmail|email/)) return replies.notif;
+  if (t.match(/sdg|goal|un |united|sustainab/)) return replies.sdg;
+  if (t.match(/donat|give food|surplus|spare/)) return replies.donate;
+  if (t.match(/segregat|dry|wet|waste|sort|compost/)) return replies.segregator;
+  if (t.match(/team|raizel|isha|founder|who made/)) return replies.team;
+  if (t.match(/contact|phone|number|reach|gmail/)) return replies.contact;
+  return replies.default;
+}
+
+function toggleChat() {
+  chatOpen = !chatOpen;
+  document.getElementById('chat-window').classList.toggle('open', chatOpen);
+  document.getElementById('fab-badge').style.display = chatOpen ? 'none' : 'flex';
+  if (chatOpen && !chatInited) {
+    chatInited = true;
+    setTimeout(() => addBotMsg("Hi! I'm the EcoShakti Assistant 🌱 Ask me about our AI camera, how shelters get notified, waste segregation, SDG goals, or how to donate food. How can I help?"), 450);
+  }
+}
+
+function addBotMsg(text) {
+  const msgs = document.getElementById('chat-messages');
+  const typing = document.createElement('div');
+  typing.className = 'msg bot';
+  typing.innerHTML = `<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+  msgs.appendChild(typing);
+  msgs.scrollTop = msgs.scrollHeight;
+  setTimeout(() => {
+    typing.remove();
+    const m = document.createElement('div');
+    m.className = 'msg bot';
+    const time = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    const html = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+    m.innerHTML = `<div class="msg-bubble">${html}</div><div class="msg-time">${time}</div>`;
+    msgs.appendChild(m);
+    msgs.scrollTop = msgs.scrollHeight;
+  }, 800 + Math.random() * 500);
+}
+
+function addUserMsg(text) {
+  const msgs = document.getElementById('chat-messages');
+  const m = document.createElement('div');
+  m.className = 'msg user';
+  const time = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+  m.innerHTML = `<div class="msg-bubble">${text}</div><div class="msg-time">${time}</div>`;
+  msgs.appendChild(m);
+  msgs.scrollTop = msgs.scrollHeight;
+  document.getElementById('quick-btns').style.display = 'none';
+}
+
+function sendMessage() {
+  const inp = document.getElementById('chat-input');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = '';
+  addUserMsg(text);
+  setTimeout(() => addBotMsg(getBotReply(text)), 200);
+}
+
+function sendQuick(text) {
+  if (!chatOpen) toggleChat();
+  setTimeout(() => { addUserMsg(text); setTimeout(() => addBotMsg(getBotReply(text)), 200); }, chatInited ? 0 : 550);
+}
+</script>
+</body>
+</html>
